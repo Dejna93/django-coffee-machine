@@ -1,35 +1,6 @@
 from django.db import models
 
 
-# Create your models here.
-
-
-class Heater(models.Model):
-    pass
-
-
-class Container(models.Model):
-    class Meta:
-        abstract = True
-    capacity = models.IntegerField()
-
-
-class WaterTank(Container):
-    pass
-
-
-class CoffeeContainer(Container):
-    capacity = models.IntegerField()
-
-
-class MilkContainer(Container):
-    capacity = models.IntegerField()
-
-
-class CoffeeGrinder(models.Model):
-    pass
-
-
 class CoffeeSize(models.Model):
     name = models.CharField(max_length=10)
     capacity = models.IntegerField()

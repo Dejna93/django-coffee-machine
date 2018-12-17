@@ -31,8 +31,6 @@ PROJECT_TEMPLATES = [
     join(PROJECT_ROOT, 'templates'),
 ]
 
-# add apps/ to the Python path
-sys.path.append(normpath(join(PROJECT_ROOT, 'apps')))
 
 # ##### APPLICATION CONFIGURATION #########################
 
@@ -45,7 +43,7 @@ DEFAULT_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
-    'machine',
+    'coffemachine.machine',
 ]
 
 # Middlewares

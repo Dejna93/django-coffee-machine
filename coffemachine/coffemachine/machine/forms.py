@@ -1,6 +1,6 @@
 from django import forms
 
-from coffemachine.apps.machine.models import Coffee
+from .models import Coffee
 
 
 class CoffeeChoiceForm(forms.Form):

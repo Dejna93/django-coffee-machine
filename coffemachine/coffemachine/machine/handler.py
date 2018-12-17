@@ -2,9 +2,8 @@ from abc import ABCMeta, abstractmethod
 
 from django.shortcuts import render, get_object_or_404
 
-from coffemachine.apps.machine.models import Coffee
-
-from coffemachine.apps.machine.forms import CoffeChoiceForm
+from .models import Coffee
+from .forms import CoffeeChoiceForm
 
 
 class MachineProcessPreparingCoffee(object):
@@ -16,7 +15,7 @@ class MachineProcessPreparingCoffee(object):
         self.form = None
 
     def set_form(self):
-        self.form = CoffeChoiceForm(data=self.request.POST or None)
+        self.form = CoffeeChoiceForm(data=self.request.POST or None)
 
     def prepare_get_response(self):
         self.set_form()

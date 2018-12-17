@@ -3,9 +3,9 @@ from django.shortcuts import render, get_object_or_404
 # Create your views here.
 from django.views import View
 
-from coffemachine.apps.machine.forms import CoffeeChoiceForm
-from coffemachine.apps.machine.models import Coffee
-from coffemachine.apps.machine.handler import CoffeeBrewMechanism
+from .forms import CoffeeChoiceForm
+from .models import Coffee
+from .handler import CoffeeBrewMechanism
 
 
 class CoffeeMachineView(View):

@@ -1,5 +1,5 @@
 # Django imports
-from apps.machine.views import CoffeeMachineView
+from .views import CoffeeMachineView
 from django.conf.urls import url
 
 urlpatterns = [
