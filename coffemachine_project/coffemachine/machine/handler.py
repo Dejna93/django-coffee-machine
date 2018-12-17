@@ -1,38 +1,5 @@
 from abc import ABCMeta, abstractmethod
 
-from django.shortcuts import render, get_object_or_404
-
-from .models import Coffee
-from .forms import CoffeeChoiceForm
-
-
-class MachineProcessPreparingCoffee(object):
-    template_name = ""
-
-    def __init__(self, request):
-        self.request = request
-        self.kwargs = {}
-        self.form = None
-
-    def set_form(self):
-        self.form = CoffeeChoiceForm(data=self.request.POST or None)
-
-    def prepare_get_response(self):
-        self.set_form()
-        return self.get_response()
-
-    def prepare_post_response(self):
-        self.set_form()
-        if self.form.is_valid():
-            coffee = get_object_or_404(Coffee, coffee_type=self.form.cleaned_data["coffee_type"])
-            coffee_machine = CoffeeBrewMechanism(coffee=coffee)
-            status = coffee_machine.make_coffee()
-
-        return self.get_response()
-
-    def get_response(self):
-        return render(self.request, self.template_name, context=self.kwargs)
-
 
 class DevicePart(object):
     __metaclass__ = ABCMeta
@@ -74,7 +41,7 @@ class PressurePump(DevicePart):
 
 class WaterHeater(DevicePart):
     CAPACITY = 300  # ml
-    MIN_CAPACITY = 50 # ml
+    MIN_CAPACITY = 50  # ml
     EFFERVESCENCE = 100  # C
 
     def check_current_status(self):
@@ -149,7 +116,7 @@ class CoffeeBrewStrategy(object):
     __metaclass__ = ABCMeta
 
     def brew(self, mechanism):
-       raise NotImplementedError
+        raise NotImplementedError
 
 
 class EspressoStrategy(CoffeeBrewStrategy):
@@ -175,7 +142,6 @@ class LateStrategy(CoffeeBrewStrategy):
 
 class CoffeeBrewMechanism(object):
     def __init__(self, coffee):
-
         self.coffee = coffee
         self.water_heater = WaterHeater()
         self.milk_heater = MilkHeater(self.water_heater)
