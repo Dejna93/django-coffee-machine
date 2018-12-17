@@ -4,6 +4,9 @@ from abc import ABCMeta, abstractmethod
 class DevicePart(object):
     __metaclass__ = ABCMeta
 
+    def __init__(self):
+        self._errors = {}
+
     @abstractmethod
     def check_current_status(self):
         pass
@@ -16,11 +19,20 @@ class DevicePart(object):
     def run_process(self):
         pass
 
+    def is_any_errors(self):
+        if not self._errors.keys():
+            return True
+        return self._errors
+
+    def add_error(self, error):
+        self._errors[error] = True
+
 
 class PressurePump(DevicePart):
     MAX_PRESSURE = 10  # bar
 
     def __init__(self):
+        super(PressurePump, self).__init__()
         self.current_pressure = 1  # bar
 
     def check_current_status(self):
@@ -30,8 +42,8 @@ class PressurePump(DevicePart):
         self.current_pressure = 1
 
     def run_process(self):
-        for bar in range(PressurePump.MAX_PRESSURE):
-            self.current_pressure += bar
+        for bar in range(PressurePump.MAX_PRESSURE + 1):
+            self.current_pressure = bar
             print "Increase pressure to %s bar" % self.current_pressure
         return self.check_current_status()
 
@@ -40,59 +52,79 @@ class PressurePump(DevicePart):
 
 
 class WaterHeater(DevicePart):
-    CAPACITY = 300  # ml
+    CAPACITY = 350  # ml
     MIN_CAPACITY = 50  # ml
     EFFERVESCENCE = 100  # C
+
+    ERROR_EMPTY_WATER_TANK = "Empty water tank"
+    ERROR_NOT_ENOUGH_WATER_TO_BOIL = "Not enough water in heater to boil"
+    ERROR_BAD_TEMP = "Too low water temperature"
+
+    def __init__(self):
+        super(WaterHeater, self).__init__()
+        self.water_tank = WaterTank()
+        self.water_temp = 20  # C
+        self.current_capacity = self.MIN_CAPACITY
 
     def check_current_status(self):
         pass
 
     def check_is_water_boiling(self):
-        return self.water_temp == self.EFFERVESCENCE
+        if not self.water_temp == self.EFFERVESCENCE:
+            self.add_error(self.ERROR_BAD_TEMP)
+            return False
+        return True
 
     def check_is_enough_water_capacity(self):
-        return self.current_capacity >= self.MIN_CAPACITY or self.current_capacity <= WaterHeater.CAPACITY
+        if not self.MIN_CAPACITY <= self.current_capacity <= WaterHeater.CAPACITY:
+            self.add_error(self.ERROR_NOT_ENOUGH_WATER_TO_BOIL)
+            return False
+        return True
 
     def cleanup(self):
-        self.current_capacity = 0
+        self.current_capacity = self.MIN_CAPACITY
         self.water_temp = 20  # C
 
     def run_process(self, water_to_boil=CAPACITY):
+        self.current_capacity = water_to_boil
         if not self.check_is_enough_water_capacity():
             return False
-        return self.send_water_to_brew(water_to_boil)
-
-    def __init__(self):
-        self.water_tank = WaterTank()
-        self.water_temp = 20  # C
-        self.current_capacity = 0
+        self.send_water_to_brew()
+        return self.is_any_errors()
 
     def prepare_to_boiling(self, amount=CAPACITY):
         if self.check_is_enough_water_capacity():
-            water_for_tank = self.water_tank.get_amount_of_water_for_boiling(amount)
+            water_for_tank = self.water_tank.get_amount_from_conteiner(amount)
             if water_for_tank:  # check if empty tank is empty
-                for temp in range(self.water_temp, 100):
+                for temp in range(self.water_temp, 101):
                     print "Start boiling water %s" % temp
                     self.water_temp = temp
-            return True
+                return True
+            else:
+                self.add_error(self.ERROR_EMPTY_WATER_TANK)
+                print "Is not enough water please refill"
+                return False
         return False
 
     def prepare_water_for_pressure_pomp(self):
         self.prepare_to_boiling()
         return self.check_is_water_boiling()
 
-    def send_water_to_brew(self, water_to_boil):
-        self.prepare_to_boiling(amount=water_to_boil)
+    def send_water_to_brew(self):
+        if not self.prepare_to_boiling(amount=self.current_capacity):
+            return False
         self.prepare_water_for_pressure_pomp()
-        result = self.check_is_water_boiling
+        result = self.check_is_water_boiling()
         self.cleanup()
         return result
 
 
 class MilkHeater(DevicePart):
     CAPACITY = 150  # ml
+    ERROR_EMPTY_MILK_TANK = "Empty milk tank"
 
     def __init__(self, water_heater):
+        super(MilkHeater, self).__init__()
         self.water_heater = water_heater
         self.milk_tank = MilkTank()
 
@@ -102,29 +134,46 @@ class MilkHeater(DevicePart):
     def cleanup(self):
         pass
 
+    def fill_water(self):
+        self.water_heater.water_tank.fill_fluid_tank(WaterTank.CAPACITY)
+        del self._errors[self.water_heater.ERROR_EMPTY_WATER_TANK]
+
+    def fill_milk(self):
+        self.milk_tank.fill_fluid_tank(self.milk_tank.CAPACITY)
+        del self._errors[self.ERROR_EMPTY_MILK_TANK]
+
     def run_process(self):
-        if self.water_heater.prepare_to_boiling(MilkTank.WATER_FOR_LATHER) and self.water_heater.prepare_water_for_pressure_pomp():
-            milk_for_lather = self.milk_tank.get_amount_of_milk_for_lather(self.CAPACITY)
+        prepare_boiling = self.water_heater.prepare_to_boiling(MilkTank.WATER_FOR_LATHER)
+        prepare_pressure_pump = self.water_heater.prepare_water_for_pressure_pomp()
+        if prepare_boiling and prepare_pressure_pump:
+            milk_for_lather = self.milk_tank.get_amount_from_conteiner(self.CAPACITY)
             if milk_for_lather:
                 for second in range(10):
                     print "Start lather milk"
                 return True
+            else:
+                self.add_error(self.ERROR_EMPTY_MILK_TANK)
+                return False
+        if not prepare_boiling:
+            self.add_error(self.water_heater.ERROR_NOT_ENOUGH_WATER_TO_BOIL)
+        if not prepare_pressure_pump:
+            self.add_error("Pump")
         return False
 
 
-class CoffeeBrewStrategy(object):
+class CoffeeBrewRecipe(object):
     __metaclass__ = ABCMeta
 
     def brew(self, mechanism):
         raise NotImplementedError
 
 
-class EspressoStrategy(CoffeeBrewStrategy):
+class EspressoRecipe(CoffeeBrewRecipe):
     def brew(self, mechanism):
         return mechanism.make_basic_coffee()
 
 
-class AmericanoStrategy(CoffeeBrewStrategy):
+class AmericanoRecipe(CoffeeBrewRecipe):
     def brew(self, mechanism):
         size_coffee = mechanism.make_basic_coffee()
         mechanism.boiling_water(WaterTank.CAPACITY / 3)
@@ -132,7 +181,7 @@ class AmericanoStrategy(CoffeeBrewStrategy):
         return size_coffee
 
 
-class LateStrategy(CoffeeBrewStrategy):
+class LateRecipe(CoffeeBrewRecipe):
     def brew(self, mechanism):
         size_coffee = mechanism.make_basic_coffee()
         mechanism.lather_milk()
@@ -151,9 +200,9 @@ class CoffeeBrewMechanism(object):
 
         self.coffee_method = None
         self.methods_brew = {
-            "espresso": EspressoStrategy,
-            "americano": AmericanoStrategy,
-            "latte": LateStrategy,
+            "espresso": EspressoRecipe,
+            "americano": AmericanoRecipe,
+            "latte": LateRecipe,
         }
 
     def set_method_for_coffee(self, coffee):
@@ -192,34 +241,36 @@ class TrashBin(DevicePart):
     CAPACITY = 10  # TRAILS
 
     def __init__(self):
+        super(TrashBin, self).__init__()
         self.current_weight = 0
 
     def check_current_status(self):
         return self.current_weight + 1 < self.CAPACITY
 
     def cleanup(self):
+        print "Throw away trash"
         self.current_weight = 0
 
     def run_process(self):
         self.add_trash()
-
-    def is_enough_space_for_trash(self):
-        return self.current_weight + 1 < self.CAPACITY
 
     def add_trash(self):
         self.current_weight += 1
 
 
 class CoffeeGrinder(DevicePart):
-    CAPACITY = 1000  # ml
+    CAPACITY = 200  # ml
+    ERROR_NOT_ENOUGH_BEANS_TO_GRIND = "Not enough beans to grind"
 
     def __init__(self, fill_coffee_beans=True):
+        super(CoffeeGrinder, self).__init__()
+        self.coffee_tank = CoffeeBeansTank()
         self.current_capacity = 0
         if fill_coffee_beans:
-            self.fill_coffee_beans_container(CoffeeGrinder.CAPACITY)
+            self.coffee_tank.fill_fluid_tank(self.CAPACITY)
 
     def check_current_status(self):
-        return self.current_capacity > 0
+        pass
 
     def cleanup(self):
         self.current_capacity = 0
@@ -227,71 +278,81 @@ class CoffeeGrinder(DevicePart):
     def run_process(self):
         pass
 
-    def fill_coffee_beans_container(self, capacity=None):
-        if CoffeeGrinder.CAPACITY >= capacity:
-            print "Coffee Grinder was fully filled"
-        elif CoffeeGrinder.CAPACITY - self.current_capacity >= capacity:
-            self.current_capacity += capacity
-            print "Coffee Grinder is filled for %s" % capacity
-        print "Cannot fill Coffee Grinder, too many beans"
-
-    def prepare_beans_for_grind(self, amount):
-        if self.current_capacity - amount > 0:
-            self.current_capacity -= amount
-            print "Successfully get enough beans to grind"
-            return True
-        print "Please fill coffee beans"
-        return False
+    def check_is_enough_coffee_beans(self):
+        return 0 < self.current_capacity <= self.CAPACITY
 
     def grind_beans(self, amount):
-        if self.check_current_status() and self.prepare_beans_for_grind(amount):
-            print "Grinding beans"
-            return True
+        if 0 < amount <= self.CAPACITY:
+            coffee = self.coffee_tank.get_amount_from_conteiner(amount)
+            if coffee:
+                for sec in range(5):
+                    print "Start griding beans"
+                return True
+            else:
+                self.add_error(self.ERROR_NOT_ENOUGH_BEANS_TO_GRIND)
+                return False
         return False
 
 
-class FluidConteiner(object):
+class Conteiner(object):
     __metaclass__ = ABCMeta
     CAPACITY = 0
+    NAME = ""
+    TEXT_SEND_FROM_CONTEINER = ""
+    TEXT_PLEASE_FILL = ""
+    TEXT_WAS_FULLY_FILLED = ""
+    TEXT_FILLED = ""
+    TEXT_FILLED_TO_MAX = ""
 
     def __init__(self, fill_fluid=True):
-        self.liquid_level = 0
+        self.content_level = 0
         if fill_fluid:
             self.fill_fluid_tank(self.CAPACITY)
 
     def fill_fluid_tank(self, capacity):
         if self.CAPACITY > capacity:
-            print "%s was fully filled" % self.__name__
-        elif self.CAPACITY - self.liquid_level >= capacity:
-            self.liquid_level += capacity
-            print "%s is filled for %s" % (self.__name__, capacity)
+            print self.TEXT_WAS_FULLY_FILLED
+        elif self.CAPACITY - self.content_level >= capacity:
+            self.content_level += capacity
+            print self.TEXT_FILLED % capacity
         else:
-            print "Cannot fill %s, too many %s" % (self.__name__, capacity)
+            self.content_level = self.CAPACITY
+            print self.TEXT_FILLED_TO_MAX % capacity
+
+    def get_amount_from_conteiner(self, amount):
+        if self.content_level - amount > 0:
+            self.content_level -= amount
+            print self.TEXT_SEND_FROM_CONTEINER
+            return True
+        else:
+            print self.TEXT_PLEASE_FILL
+            return False
 
 
-class WaterTank(FluidConteiner):
+class WaterTank(Conteiner):
     CAPACITY = 1000  # ml
-
-    def get_amount_of_water_for_boiling(self, amount):
-        if self.liquid_level - amount > 0:
-            self.liquid_level -= amount
-            print "%s send water to boiling" % self.__name__
-            return True
-        else:
-            print "Please fill %s" % self.__name__
-            # self.fill_water_tank()
-            return False
+    TEXT_SEND_FROM_CONTEINER = "Water is get from tank"
+    TEXT_PLEASE_FILL = "Please fill water tank"
+    TEXT_WAS_FULLY_FILLED = "Water tank is full"
+    TEXT_FILLED = "Water tank is filled [%s]"
+    TEXT_FILLED_TO_MAX = "Water tank is already filled to his max capacity  [%s]"
 
 
-class MilkTank(FluidConteiner):
+class MilkTank(Conteiner):
     CAPACITY = 300  # ml
-    WATER_FOR_LATHER = 300  # ml
+    WATER_FOR_LATHER = 150  # ml
+    TEXT_SEND_FROM_CONTEINER = "Milk is get from tank"
+    TEXT_PLEASE_FILL = "Please fill milk tank"
+    TEXT_WAS_FULLY_FILLED = "Milk tank is full"
+    TEXT_FILLED = "Milk tank is filled [%s]"
+    TEXT_FILLED_TO_MAX = "Milk tank is already filled to his max capacity  [%s]"
 
-    def get_amount_of_milk_for_lather(self, amount):
-        if self.liquid_level - amount > 0:
-            self.liquid_level -= amount
-            print "Filling tank for lather"
-            return True
-        else:
-            print "Please fill milk tank"
-            return False
+
+class CoffeeBeansTank(Conteiner):
+    CAPACITY = 500 # dg
+    TEXT_SEND_FROM_CONTEINER = "Coffee beans is get from tank"
+    TEXT_PLEASE_FILL = "Please fill coffee beans tank"
+    TEXT_WAS_FULLY_FILLED = "Coffee beans tank is full"
+    TEXT_FILLED = "Coffee beans tank is filled [%s]"
+    TEXT_FILLED_TO_MAX = "Coffee beans tank is already filled to his max capacity  [%s]"
+
