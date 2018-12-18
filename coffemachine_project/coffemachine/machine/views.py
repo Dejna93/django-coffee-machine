@@ -31,7 +31,6 @@ class CoffeeMachineView(View):
 
     def post(self, request, *args, **kwargs):
         self.common_steps(request)
-        method = request.POST.get("method", None)
         if request.is_ajax():
             if self._handle_form():
                 return JsonResponse(self.json_kwargs)

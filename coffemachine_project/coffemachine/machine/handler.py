@@ -289,7 +289,7 @@ class CoffeeBrewMechanism(object):
         if self.is_errors():
             raise OperationException("step_preparing_ground_coffee")
 
-    def step_prepairing_boiling_water(self):
+    def step_preparing_boiling_water(self):
         status = self.boiling_water(self.coffee.size)
         self._update_status(status)
         if self.is_errors():
@@ -305,7 +305,7 @@ class CoffeeBrewMechanism(object):
         try:
             self.step_preparing_trash()
             self.step_preparing_ground_coffee()
-            self.step_prepairing_boiling_water()
+            self.step_preparing_boiling_water()
             self.step_preparing_pressure_pump()
         except OperationException as e:
             print e
