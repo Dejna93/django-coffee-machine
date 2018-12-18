@@ -64,8 +64,7 @@ class CoffeeMachineView(View):
                 html = render_to_string("core/problem.html", {"problems": status.keys()})
                 self.json_kwargs["problems"] = html
                 return True
-            html = render_to_string("core/coffee_cup.html", {"coffee_size": status})
-            self.json_kwargs["html"] = html
+            self.json_kwargs["image"] = status
             return True
         return False
 
@@ -104,5 +103,5 @@ class CoffeeExtraOptionsAjaxView(View):
         return self._generate_response("Milk successfully refiled")
 
     def trash_remove(self):
-        mechanism.trash_bin.cleanup()
+        mechanism.remove_trash_bin()
         return self._generate_response("Trash throw away")

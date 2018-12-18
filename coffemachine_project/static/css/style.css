@@ -2,6 +2,31 @@ body {
 
 }
 
+#coffee_machine{
+    position: relative;
+    background-image: url("/static/images/coffee_machine.jpg");
+    width: 390px;
+    height: 480px;
+}
+
+#coffee_choice{
+     position: absolute;
+     top: 100px;
+     left: 140px;
+}
+
+#coffee_button{
+    position: absolute;
+    bottom: 45px;
+    left: 220px;
+}
+
+#coffee_image{
+    position: absolute;
+    top: 210px;
+    left: 130px;
+}
+
 .table-borderless > tbody > tr > td,
 .table-borderless > tbody > tr > th,
 .table-borderless > tfoot > tr > td,

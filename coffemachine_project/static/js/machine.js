@@ -18,9 +18,10 @@ $( document ).ready(function() {
             $("[id*='options']").each(function(){
                 $(this).attr("disabled", false);
             });
-
         }
-        $("#cup").html(data["html"]);
+        if (data["image"]){
+            $("#coffee_image").html("<img src='"+data["image"]+"'>");
+        }
         });
     });
 

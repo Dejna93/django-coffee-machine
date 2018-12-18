@@ -171,16 +171,25 @@ class MilkHeater(DevicePart):
 class CoffeeBrewRecipe(object):
     __metaclass__ = ABCMeta
 
+    IMAGE = ""
+
     def brew(self, mechanism):
         raise NotImplementedError
 
 
 class EspressoRecipe(CoffeeBrewRecipe):
+    IMAGE = "/static/images/espresso.png"
+
     def brew(self, mechanism):
-        return mechanism.make_basic_coffee()
+        status_coffe = mechanism.make_basic_coffee()
+        if isinstance(status_coffe, dict):
+            return status_coffe
+        return self.IMAGE
 
 
 class AmericanoRecipe(CoffeeBrewRecipe):
+    IMAGE = "/static/images/espresso.png"
+
     def brew(self, mechanism):
         status_coffee = mechanism.make_basic_coffee()
         if isinstance(status_coffee, dict):
@@ -188,12 +197,12 @@ class AmericanoRecipe(CoffeeBrewRecipe):
         status_extra_water = mechanism.boiling_water(mechanism.coffee.extra_quantity)
         if isinstance(status_extra_water, dict):
             return status_extra_water
-
-        status_coffee += mechanism.coffee.extra_quantity
-        return status_coffee
+        return self.IMAGE
 
 
-class LateRecipe(CoffeeBrewRecipe):
+class LatteRecipe(CoffeeBrewRecipe):
+    IMAGE = "/static/images/latte.png"
+
     def brew(self, mechanism):
         status_coffee = mechanism.make_basic_coffee()
         if isinstance(status_coffee, dict):
@@ -201,8 +210,7 @@ class LateRecipe(CoffeeBrewRecipe):
         status_milk = mechanism.lather_milk()
         if isinstance(status_milk, dict):
             return status_milk
-        size_coffee = status_coffee + mechanism.coffee.extra_quantity
-        return size_coffee
+        return self.IMAGE
 
 
 class CoffeeBrewMechanism(object):
@@ -236,7 +244,7 @@ class CoffeeBrewMechanism(object):
         self.methods_brew = {
             "espresso": EspressoRecipe,
             "americano": AmericanoRecipe,
-            "latte": LateRecipe,
+            "latte": LatteRecipe,
         }
 
     def set_method_for_coffee(self, coffee):
@@ -259,6 +267,7 @@ class CoffeeBrewMechanism(object):
         return self.milk_heater.is_any_errors()
 
     def is_full_trash_bin(self):
+        self.trash_bin.check_current_status()
         return self.trash_bin.is_any_errors()
 
     def _update_status(self, status):
@@ -268,30 +277,47 @@ class CoffeeBrewMechanism(object):
     def is_errors(self):
         return self.errors.keys()
 
-    def make_basic_coffee(self):
+    def step_preparing_trash(self):
         status = self.is_full_trash_bin()
         self._update_status(status)
         if self.is_errors():
-            return self.errors
+            raise OperationException("step_preparing_trash")
+
+    def step_preparing_ground_coffee(self):
         status = self.prepare_ground_coffee(self.coffee)
         self._update_status(status)
         if self.is_errors():
-            return self.errors
+            raise OperationException("step_preparing_ground_coffee")
+
+    def step_prepairing_boiling_water(self):
         status = self.boiling_water(self.coffee.size)
         self._update_status(status)
         if self.is_errors():
-            return self.errors
+            raise OperationException("step_prepairing_boiling_water")
+
+    def step_preparing_pressure_pump(self):
         status = self.prepare_pressure_pump()
         self._update_status(status)
         if self.errors.keys():
+            raise OperationException("step_preparing_pressure_pump")
+
+    def make_basic_coffee(self):
+        try:
+            self.step_preparing_trash()
+            self.step_preparing_ground_coffee()
+            self.step_prepairing_boiling_water()
+            self.step_preparing_pressure_pump()
+        except OperationException as e:
+            print e
             return self.errors
+        print self.trash_bin.current_weight
         return self.run_brew_process()
 
     def run_brew_process(self):
         self.pressure_pump.cleanup()
         self.water_heater.cleanup()
         self.trash_bin.add_trash()
-        return self.coffee.size
+        return True
 
     def make_coffee(self, coffee):
         self.coffee = coffee
@@ -299,7 +325,7 @@ class CoffeeBrewMechanism(object):
         status = self.coffee_method.brew(self)
         if isinstance(status, dict):
             return status
-        return int((status / self.MAX_SIZE_COFFEE) * 100)
+        return status
 
     def refill_water_tank(self):
         self.water_heater.refill_water_tank()
@@ -311,9 +337,15 @@ class CoffeeBrewMechanism(object):
         if self.errors.get(CoffeeGrinder.ERROR_NOT_ENOUGH_BEANS_TO_GRIND):
             del self.errors[CoffeeGrinder.ERROR_NOT_ENOUGH_BEANS_TO_GRIND]
 
+    def remove_trash_bin(self):
+        self.trash_bin.cleanup()
+        if self.errors.get(TrashBin.ERROR_FULL_TRASH):
+            del self.errors[TrashBin.ERROR_FULL_TRASH]
+        print self.errors
+
 
 class TrashBin(DevicePart):
-    CAPACITY = 10  # TRAILS
+    CAPACITY = 4  # TRAILS
     ERROR_FULL_TRASH = "Full trash bin"
 
     def __init__(self):
@@ -321,13 +353,15 @@ class TrashBin(DevicePart):
         self.current_weight = 0
 
     def check_current_status(self):
-        if not self.current_weight + 1 < self.CAPACITY:
+        if self.current_weight >= self.CAPACITY:
+            print "Asdasd"
             self.add_error(self.ERROR_FULL_TRASH)
             return False
         return True
 
     def cleanup(self):
         print "Throw away trash"
+        self._errors = {}
         self.current_weight = 0
 
     def run_process(self):
@@ -422,7 +456,7 @@ class WaterTank(Conteiner):
     TEXT_PLEASE_FILL = "Please fill water tank"
     TEXT_WAS_FULLY_FILLED = "Water tank is full"
     TEXT_FILLED = "Water tank is filled [%s]"
-    TEXT_FILLED_TO_MAX = "Water tank is already filled to his max capacity  [%s]"
+    TEXT_FILLED_TO_MAX = "Water tank is filled to his max capacity  [%s]"
 
 
 class MilkTank(Conteiner):
@@ -432,7 +466,7 @@ class MilkTank(Conteiner):
     TEXT_PLEASE_FILL = "Please fill milk tank"
     TEXT_WAS_FULLY_FILLED = "Milk tank is full"
     TEXT_FILLED = "Milk tank is filled [%s]"
-    TEXT_FILLED_TO_MAX = "Milk tank is already filled to his max capacity  [%s]"
+    TEXT_FILLED_TO_MAX = "Milk tank is filled to his max capacity  [%s]"
 
 
 class CoffeeBeansTank(Conteiner):
@@ -441,5 +475,8 @@ class CoffeeBeansTank(Conteiner):
     TEXT_PLEASE_FILL = "Please fill coffee beans tank"
     TEXT_WAS_FULLY_FILLED = "Coffee beans tank is full"
     TEXT_FILLED = "Coffee beans tank is filled [%s]"
-    TEXT_FILLED_TO_MAX = "Coffee beans tank is already filled to his max capacity  [%s]"
+    TEXT_FILLED_TO_MAX = "Coffee beans tank is filled to his max capacity  [%s]"
 
+
+class OperationException(Exception):
+    pass
