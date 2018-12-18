@@ -1,0 +1,41 @@
+[
+{
+  "model": "machine.coffee",
+  "pk": 1,
+  "fields": {
+    "coffee_type": "espresso",
+    "beans": "Arabica",
+    "size": 120,
+    "coffee_quantity": 150,
+    "extra_quantity": null,
+    "contains_milk": false,
+    "time_preparing": 7
+  }
+},
+{
+  "model": "machine.coffee",
+  "pk": 2,
+  "fields": {
+    "coffee_type": "americano",
+    "beans": "Arabica",
+    "size": 120,
+    "coffee_quantity": 120,
+    "extra_quantity": 150,
+    "contains_milk": false,
+    "time_preparing": 12
+  }
+},
+{
+  "model": "machine.coffee",
+  "pk": 3,
+  "fields": {
+    "coffee_type": "latte",
+    "beans": "Arabica",
+    "size": 240,
+    "coffee_quantity": 110,
+    "extra_quantity": 100,
+    "contains_milk": true,
+    "time_preparing": 11
+  }
+}
+]

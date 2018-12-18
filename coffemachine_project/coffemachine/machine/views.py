@@ -28,7 +28,10 @@ class CoffeeMachineView(View):
         self.common_steps(request)
         if self._handle_form():
             coffee_machine = CoffeeBrewMechanism(coffee=self.coffee)
-            hot_coffee = coffee_machine.make_coffee()
+            status = coffee_machine.make_coffee()
+            if isinstance(status, dict):
+                self._update_kwargs({"problems": status})
+
             #todo some one to handle it
         return render(request, self.template_name, self.kwargs)
 

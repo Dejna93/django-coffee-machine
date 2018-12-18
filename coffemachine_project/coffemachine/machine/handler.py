@@ -175,17 +175,26 @@ class EspressoRecipe(CoffeeBrewRecipe):
 
 class AmericanoRecipe(CoffeeBrewRecipe):
     def brew(self, mechanism):
-        size_coffee = mechanism.make_basic_coffee()
-        mechanism.boiling_water(WaterTank.CAPACITY / 3)
-        size_coffee += WaterTank.CAPACITY / 3
-        return size_coffee
+        status_coffee = mechanism.make_basic_coffee()
+        if isinstance(status_coffee, dict):
+            return status_coffee
+        status_extra_water = mechanism.boiling_water(mechanism.coffee.extra_quantity)
+        if isinstance(status_extra_water, dict):
+            return status_extra_water
+
+        status_coffee += mechanism.coffee.extra_quantity
+        return status_coffee
 
 
 class LateRecipe(CoffeeBrewRecipe):
     def brew(self, mechanism):
-        size_coffee = mechanism.make_basic_coffee()
-        mechanism.lather_milk()
-        size_coffee += MilkHeater.CAPACITY
+        status_coffee = mechanism.make_basic_coffee()
+        if isinstance(status_coffee, dict):
+            return status_coffee
+        status_milk = mechanism.lather_milk()
+        if isinstance(status_milk, dict):
+            return status_milk
+        size_coffee = status_coffee + mechanism.coffee.extra_quantity
         return size_coffee
 
 
@@ -198,6 +207,8 @@ class CoffeeBrewMechanism(object):
         self.pressure_pump = PressurePump()
         self.trash_bin = TrashBin()
 
+        self.errors = {}
+
         self.coffee_method = None
         self.methods_brew = {
             "espresso": EspressoRecipe,
@@ -206,24 +217,38 @@ class CoffeeBrewMechanism(object):
         }
 
     def set_method_for_coffee(self, coffee):
-        self.coffee_method = self.methods_brew.get(coffee.name)(self)
+        self.coffee_method = self.methods_brew.get(coffee.coffee_type)()
 
     def prepare_ground_coffee(self, coffee):
-        return self.coffee_grinder.grind_beans(coffee.amount)
+        self.coffee_grinder.grind_beans(coffee.coffee_quantity)
+        return self.coffee_grinder.is_any_errors()
 
-    def boiling_water(self):
-        return self.water_heater.run_process()
+    def boiling_water(self, quantity):
+        self.water_heater.run_process(water_to_boil=quantity)
+        return self.water_heater.is_any_errors()
 
     def prepare_pressure_pump(self):
-        return self.pressure_pump.run_process()
+        self.pressure_pump.run_process()
+        return self.pressure_pump.is_any_errors()
 
     def lather_milk(self):
-        return self.milk_heater.run_process()
+        self.milk_heater.run_process()
+        return self.milk_heater.is_any_errors()
+
+    def _update_status(self, status):
+        if isinstance(status, dict):
+            self.errors.update(status)
 
     def make_basic_coffee(self):
-        self.prepare_ground_coffee(self.coffee)
-        self.boiling_water()
-        self.prepare_pressure_pump()
+        status = self.prepare_ground_coffee(self.coffee)
+        self._update_status(status)
+        status = self.boiling_water(self.coffee.size)
+        self._update_status(status)
+        status = self.prepare_pressure_pump()
+        self._update_status(status)
+
+        if self.errors.keys():
+            return self.errors
         return self.run_brew_process()
 
     def run_brew_process(self):
@@ -234,7 +259,7 @@ class CoffeeBrewMechanism(object):
 
     def make_coffee(self):
         self.set_method_for_coffee(self.coffee)
-        return self.coffee_method.brew()
+        return self.coffee_method.brew(self)
 
 
 class TrashBin(DevicePart):
@@ -310,14 +335,19 @@ class Conteiner(object):
             self.fill_fluid_tank(self.CAPACITY)
 
     def fill_fluid_tank(self, capacity):
-        if self.CAPACITY > capacity:
+        if self.CAPACITY < capacity:
             print self.TEXT_WAS_FULLY_FILLED
-        elif self.CAPACITY - self.content_level >= capacity:
+            return False
+        elif capacity < 0:
+            raise ValueError("Cannot put minus content") # todo better eng
+        elif capacity + self.content_level <= self.CAPACITY:
             self.content_level += capacity
             print self.TEXT_FILLED % capacity
+            return True, self.content_level
         else:
             self.content_level = self.CAPACITY
             print self.TEXT_FILLED_TO_MAX % capacity
+            return False, self.content_level
 
     def get_amount_from_conteiner(self, amount):
         if self.content_level - amount > 0:

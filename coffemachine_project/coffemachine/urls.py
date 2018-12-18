@@ -9,7 +9,7 @@ from django.conf.urls import include, url
 from django.contrib import admin
 
 urlpatterns = [
-    url(r'^', include(machine_urls, namespace="machine")),
+    url(r'^coffee/', include(machine_urls, namespace="machine")),
     # enable the admin interface
     url(r'^admin/', admin.site.urls),
 ]
