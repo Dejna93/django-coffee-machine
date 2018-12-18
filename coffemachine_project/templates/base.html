@@ -4,12 +4,18 @@
   <head>
     <meta charset="utf-8">
     <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.css' %}">
-    <script src="{% static 'js/bootstrap.min.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
     <title>{% block title %}base.html | django-project-skeleton{% endblock %}</title>
   </head>
-  <body>
-  <main>
-    {% block content %}base.html{% endblock %}
-  </main>
+  <body class="text-center">
+    <div class="d-flex h-100 p-3 mx-auto flex-column">
+       <main role="main">
+         {% block content %}base.html{% endblock %}
+       </main>
+      </div>
+     <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+      <script src="{% static 'js/bootstrap.min.js' %}"></script>
+      <script src="{% static 'js/machine.js' %}"></script>
   </body>
   </html>

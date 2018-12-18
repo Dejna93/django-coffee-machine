@@ -109,6 +109,8 @@ MEDIA_URL = '/media/'
 # ##### DEBUG CONFIGURATION ###############################
 DEBUG = False
 
+APPEND_SLASH = False
+
 # finally grab the SECRET KEY
 try:
     SECRET_KEY = open(SECRET_FILE).read().strip()

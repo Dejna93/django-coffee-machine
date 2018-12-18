@@ -1,12 +1,31 @@
 {% extends 'base.html' %}
-
-{% block title %}Login{% endblock %}
+{% load static %}
+{% block title %}Coffee Machine{% endblock %}
 
 {% block content %}
-<div class="col col-8 offset-2">
+{% url 'machine:extra_options' %}
+<div class="col col-6 offset-3">
   <form method="post">
     {% csrf_token %}
-    <button class="btn btn-primary" type="submit" value="make_coffee">Make a coffee</button>
+    <div id="problems"></div>
+    <table class="table table-borderless">
+        <tr>
+          <td rowspan="2"> <img src="{% static 'images/coffee_machine.jpg' %}"></td>
+          <td>
+            {{ form.coffee_type }}
+          </td>
+        </tr>
+        <tr>
+          <td id="cup"></td>
+          <td><button class="btn btn-primary" id="coffee_maker" type="button">Make a coffee</button></td>
+        </tr>
+        <tr>
+          <td><button class="btn btn-danger" id="beans_options"  type="button" disabled="disabled">Fill beans</button></td>
+          <td><button class="btn btn-danger" id="water_options"  type="button" disabled="disabled">Fill water</button></td>
+          <td><button class="btn btn-danger" id="milk_options"  type="button" disabled="disabled">Fill milk</button></td>
+          <td><button class="btn btn-danger" id="trash_options"  type="button" disabled="disabled">Remove trash</button></td>
+        </tr>
+    </table>
   </form>
 </div>
 {% endblock %}

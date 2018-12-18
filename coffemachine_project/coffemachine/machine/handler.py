@@ -1,3 +1,4 @@
+import thread
 from abc import ABCMeta, abstractmethod
 
 
@@ -85,6 +86,10 @@ class WaterHeater(DevicePart):
         self.current_capacity = self.MIN_CAPACITY
         self.water_temp = 20  # C
 
+    def refill_water_tank(self):
+        self.water_tank.fill_fluid_tank(WaterTank.CAPACITY)
+        self._errors = {}
+
     def run_process(self, water_to_boil=CAPACITY):
         self.current_capacity = water_to_boil
         if not self.check_is_enough_water_capacity():
@@ -136,11 +141,13 @@ class MilkHeater(DevicePart):
 
     def fill_water(self):
         self.water_heater.water_tank.fill_fluid_tank(WaterTank.CAPACITY)
-        del self._errors[self.water_heater.ERROR_EMPTY_WATER_TANK]
+        if self.water_heater.ERROR_EMPTY_WATER_TANK in self._errors.keys():
+            del self._errors[self.water_heater.ERROR_EMPTY_WATER_TANK]
 
     def fill_milk(self):
         self.milk_tank.fill_fluid_tank(self.milk_tank.CAPACITY)
-        del self._errors[self.ERROR_EMPTY_MILK_TANK]
+        if self.ERROR_EMPTY_MILK_TANK in self._errors.keys():
+            del self._errors[self.ERROR_EMPTY_MILK_TANK]
 
     def run_process(self):
         prepare_boiling = self.water_heater.prepare_to_boiling(MilkTank.WATER_FOR_LATHER)
@@ -199,7 +206,23 @@ class LateRecipe(CoffeeBrewRecipe):
 
 
 class CoffeeBrewMechanism(object):
-    def __init__(self, coffee):
+    MAX_SIZE_COFFEE = 240.
+
+    __lockObj = thread.allocate_lock()
+    __instance = None
+
+    def __new__(cls, *args, **kwargs):
+        # Critical section start
+        cls.__lockObj.acquire()
+        try:
+            if cls.__instance is None:
+                cls.__instance = super(CoffeeBrewMechanism, cls).__new__(cls, *args, **kwargs)
+        finally:
+            cls.__lockObj.release()
+        # ciritical section stop
+        return cls.__instance
+
+    def __init__(self, coffee=None):
         self.coffee = coffee
         self.water_heater = WaterHeater()
         self.milk_heater = MilkHeater(self.water_heater)
@@ -235,18 +258,31 @@ class CoffeeBrewMechanism(object):
         self.milk_heater.run_process()
         return self.milk_heater.is_any_errors()
 
+    def is_full_trash_bin(self):
+        return self.trash_bin.is_any_errors()
+
     def _update_status(self, status):
         if isinstance(status, dict):
             self.errors.update(status)
 
+    def is_errors(self):
+        return self.errors.keys()
+
     def make_basic_coffee(self):
+        status = self.is_full_trash_bin()
+        self._update_status(status)
+        if self.is_errors():
+            return self.errors
         status = self.prepare_ground_coffee(self.coffee)
         self._update_status(status)
+        if self.is_errors():
+            return self.errors
         status = self.boiling_water(self.coffee.size)
         self._update_status(status)
+        if self.is_errors():
+            return self.errors
         status = self.prepare_pressure_pump()
         self._update_status(status)
-
         if self.errors.keys():
             return self.errors
         return self.run_brew_process()
@@ -257,20 +293,38 @@ class CoffeeBrewMechanism(object):
         self.trash_bin.add_trash()
         return self.coffee.size
 
-    def make_coffee(self):
+    def make_coffee(self, coffee):
+        self.coffee = coffee
         self.set_method_for_coffee(self.coffee)
-        return self.coffee_method.brew(self)
+        status = self.coffee_method.brew(self)
+        if isinstance(status, dict):
+            return status
+        return int((status / self.MAX_SIZE_COFFEE) * 100)
+
+    def refill_water_tank(self):
+        self.water_heater.refill_water_tank()
+        if self.errors.get(WaterHeater.ERROR_EMPTY_WATER_TANK):
+            del self.errors[WaterHeater.ERROR_EMPTY_WATER_TANK]
+
+    def refill_beans_tank(self):
+        self.coffee_grinder.cleanup()
+        if self.errors.get(CoffeeGrinder.ERROR_NOT_ENOUGH_BEANS_TO_GRIND):
+            del self.errors[CoffeeGrinder.ERROR_NOT_ENOUGH_BEANS_TO_GRIND]
 
 
 class TrashBin(DevicePart):
     CAPACITY = 10  # TRAILS
+    ERROR_FULL_TRASH = "Full trash bin"
 
     def __init__(self):
         super(TrashBin, self).__init__()
         self.current_weight = 0
 
     def check_current_status(self):
-        return self.current_weight + 1 < self.CAPACITY
+        if not self.current_weight + 1 < self.CAPACITY:
+            self.add_error(self.ERROR_FULL_TRASH)
+            return False
+        return True
 
     def cleanup(self):
         print "Throw away trash"
@@ -298,7 +352,10 @@ class CoffeeGrinder(DevicePart):
         pass
 
     def cleanup(self):
+        #todo test it
         self.current_capacity = 0
+        self.coffee_tank.fill_fluid_tank(CoffeeBeansTank.CAPACITY)
+        self._errors = {}
 
     def run_process(self):
         pass
