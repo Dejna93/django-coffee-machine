@@ -1,6 +1,8 @@
+from six import python_2_unicode_compatible
 from django.db import models
 
 
+@python_2_unicode_compatible
 class Coffee(models.Model):
     coffee_types = (("espresso", "Espresso"), ("americano", "Americano"), ("latte", "Latte"))
     sizes = ((120, "Normal"), (240, "Large"))
