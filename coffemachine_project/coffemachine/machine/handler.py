@@ -99,7 +99,7 @@ class WaterHeater(DevicePart):
 
     def prepare_to_boiling(self, amount=CAPACITY):
         if self.check_is_enough_water_capacity():
-            water_for_tank = self.water_tank.get_amount_from_conteiner(amount)
+            water_for_tank = self.water_tank.get_amount_from_container(amount)
             if water_for_tank:  # check if empty tank is empty
                 for temp in range(self.water_temp, 101):
                     print "Start boiling water %s" % temp
@@ -153,7 +153,7 @@ class MilkHeater(DevicePart):
         prepare_boiling = self.water_heater.prepare_to_boiling(MilkTank.WATER_FOR_LATHER)
         prepare_pressure_pump = self.water_heater.prepare_water_for_pressure_pomp()
         if prepare_boiling and prepare_pressure_pump:
-            milk_for_lather = self.milk_tank.get_amount_from_conteiner(self.CAPACITY)
+            milk_for_lather = self.milk_tank.get_amount_from_container(self.CAPACITY)
             if milk_for_lather:
                 for second in range(10):
                     print "Start lather milk"
@@ -308,9 +308,7 @@ class CoffeeBrewMechanism(object):
             self.step_preparing_boiling_water()
             self.step_preparing_pressure_pump()
         except OperationException as e:
-            print e
             return self.errors
-        print self.trash_bin.current_weight
         return self.run_brew_process()
 
     def run_brew_process(self):
@@ -354,7 +352,6 @@ class TrashBin(DevicePart):
 
     def check_current_status(self):
         if self.current_weight >= self.CAPACITY:
-            print "Asdasd"
             self.add_error(self.ERROR_FULL_TRASH)
             return False
         return True
@@ -386,7 +383,6 @@ class CoffeeGrinder(DevicePart):
         pass
 
     def cleanup(self):
-        #todo test it
         self.current_capacity = 0
         self.coffee_tank.fill_fluid_tank(CoffeeBeansTank.CAPACITY)
         self._errors = {}
@@ -399,7 +395,7 @@ class CoffeeGrinder(DevicePart):
 
     def grind_beans(self, amount):
         if 0 < amount <= self.CAPACITY:
-            coffee = self.coffee_tank.get_amount_from_conteiner(amount)
+            coffee = self.coffee_tank.get_amount_from_container(amount)
             if coffee:
                 for sec in range(5):
                     print "Start griding beans"
@@ -414,7 +410,7 @@ class Conteiner(object):
     __metaclass__ = ABCMeta
     CAPACITY = 0
     NAME = ""
-    TEXT_SEND_FROM_CONTEINER = ""
+    TEXT_SEND_FROM_CONTAINER = ""
     TEXT_PLEASE_FILL = ""
     TEXT_WAS_FULLY_FILLED = ""
     TEXT_FILLED = ""
@@ -430,7 +426,7 @@ class Conteiner(object):
             print self.TEXT_WAS_FULLY_FILLED
             return False
         elif capacity < 0:
-            raise ValueError("Cannot put minus content") # todo better eng
+            raise ValueError("It is possible to have minus something in bottle?")
         elif capacity + self.content_level <= self.CAPACITY:
             self.content_level += capacity
             print self.TEXT_FILLED % capacity
@@ -440,10 +436,10 @@ class Conteiner(object):
             print self.TEXT_FILLED_TO_MAX % capacity
             return False, self.content_level
 
-    def get_amount_from_conteiner(self, amount):
+    def get_amount_from_container(self, amount):
         if self.content_level - amount > 0:
             self.content_level -= amount
-            print self.TEXT_SEND_FROM_CONTEINER
+            print self.TEXT_SEND_FROM_CONTAINER
             return True
         else:
             print self.TEXT_PLEASE_FILL
@@ -452,7 +448,7 @@ class Conteiner(object):
 
 class WaterTank(Conteiner):
     CAPACITY = 1000  # ml
-    TEXT_SEND_FROM_CONTEINER = "Water is get from tank"
+    TEXT_SEND_FROM_CONTAINER = "Water is get from tank"
     TEXT_PLEASE_FILL = "Please fill water tank"
     TEXT_WAS_FULLY_FILLED = "Water tank is full"
     TEXT_FILLED = "Water tank is filled [%s]"
@@ -462,7 +458,7 @@ class WaterTank(Conteiner):
 class MilkTank(Conteiner):
     CAPACITY = 300  # ml
     WATER_FOR_LATHER = 150  # ml
-    TEXT_SEND_FROM_CONTEINER = "Milk is get from tank"
+    TEXT_SEND_FROM_CONTAINER = "Milk is get from tank"
     TEXT_PLEASE_FILL = "Please fill milk tank"
     TEXT_WAS_FULLY_FILLED = "Milk tank is full"
     TEXT_FILLED = "Milk tank is filled [%s]"
@@ -471,7 +467,7 @@ class MilkTank(Conteiner):
 
 class CoffeeBeansTank(Conteiner):
     CAPACITY = 500 # dg
-    TEXT_SEND_FROM_CONTEINER = "Coffee beans is get from tank"
+    TEXT_SEND_FROM_CONTAINER = "Coffee beans is get from tank"
     TEXT_PLEASE_FILL = "Please fill coffee beans tank"
     TEXT_WAS_FULLY_FILLED = "Coffee beans tank is full"
     TEXT_FILLED = "Coffee beans tank is filled [%s]"

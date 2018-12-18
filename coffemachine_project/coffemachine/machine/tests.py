@@ -8,6 +8,8 @@ from coffemachine.machine.models import Coffee
 
 from coffemachine.machine.handler import CoffeeBrewMechanism, EspressoRecipe
 
+from coffemachine.machine.handler import LatteRecipe, AmericanoRecipe
+
 
 class MachineTestCases(TestCase):
     def setUp(self):
@@ -134,7 +136,7 @@ class WaterTank_Test(MachineTestCases):
 
     def test_fill_liquid_tank__minus_capacity(self):
         tank = WaterTank()
-        with self.assertRaisesMessage(ValueError, "Cannot put minus content"):
+        with self.assertRaisesMessage(ValueError, "It is possible to have minus something in bottle?"):
             tank.fill_fluid_tank(-100)
 
     def test_fill_liquid_tank__0_capacity(self):
@@ -164,42 +166,39 @@ class CoffeeBrewMechanism_Test(MachineTestCases):
 
     def test_espresso_init(self):
         coffee = Coffee.objects.get(coffee_type="espresso")
-        brew_mechanism = CoffeeBrewMechanism(coffee)
-        self.assertEqual(brew_mechanism.make_coffee(), coffee.size)
+        brew_mechanism = CoffeeBrewMechanism()
+        self.assertEqual(brew_mechanism.make_coffee(coffee), EspressoRecipe.IMAGE)
 
     def test_make_couple_cups_of_espresso_coffee(self):
         coffee = Coffee.objects.get(coffee_type="espresso")
-        brew_mechanism = CoffeeBrewMechanism(coffee)
+        brew_mechanism = CoffeeBrewMechanism()
         status = defaultdict(lambda: False)
         for _ in range(5):
-            status = brew_mechanism.make_coffee()
-        self.assertTrue(status[CoffeeGrinder.ERROR_NOT_ENOUGH_BEANS_TO_GRIND])
+            status = brew_mechanism.make_coffee(coffee)
         self.assertTrue(status[WaterHeater.ERROR_EMPTY_WATER_TANK])
 
     def test_americano_init(self):
         coffee = Coffee.objects.get(coffee_type="americano")
-        brew_mechanism = CoffeeBrewMechanism(coffee)
-        self.assertEqual(brew_mechanism.make_coffee(), coffee.size + coffee.extra_quantity)
+        brew_mechanism = CoffeeBrewMechanism()
+        self.assertEqual(brew_mechanism.make_coffee(coffee), AmericanoRecipe.IMAGE)
 
     def test_make_couple_cups_of_americano_coffee(self):
         coffee = Coffee.objects.get(coffee_type="americano")
-        brew_mechanism = CoffeeBrewMechanism(coffee)
+        brew_mechanism = CoffeeBrewMechanism()
         status = defaultdict(lambda: False)
         for _ in range(5):
-            status = brew_mechanism.make_coffee()
-        self.assertTrue(status[CoffeeGrinder.ERROR_NOT_ENOUGH_BEANS_TO_GRIND])
+            status = brew_mechanism.make_coffee(coffee)
         self.assertTrue(status[WaterHeater.ERROR_EMPTY_WATER_TANK])
 
     def test_late_init(self):
         coffee = Coffee.objects.get(coffee_type="latte")
-        brew_mechanism = CoffeeBrewMechanism(coffee)
-        self.assertEqual(brew_mechanism.make_coffee(), coffee.size + coffee.extra_quantity)
+        brew_mechanism = CoffeeBrewMechanism()
+        self.assertEqual(brew_mechanism.make_coffee(coffee), LatteRecipe.IMAGE)
 
     def test_make_couple_cups_of_late_coffee(self):
         coffee = Coffee.objects.get(coffee_type="latte")
-        brew_mechanism = CoffeeBrewMechanism(coffee)
+        brew_mechanism = CoffeeBrewMechanism()
         status = defaultdict(lambda: False)
         for _ in range(5):
-            status = brew_mechanism.make_coffee()
-        self.assertTrue(status[CoffeeGrinder.ERROR_NOT_ENOUGH_BEANS_TO_GRIND])
+            status = brew_mechanism.make_coffee(coffee)
         self.assertTrue(status[WaterHeater.ERROR_EMPTY_WATER_TANK])
