@@ -1,12 +1,6 @@
 $( document ).ready(function() {
-    var send_request = function(){
-    $.ajax({url: "", success: function(result){
-        console.log(result);
-    }});
-    };
-
     $("#coffee_maker").click(function(){
-        var button = $(this);
+      var button = $(this);
       $.post( "", {
             csrfmiddlewaretoken: $("[name='csrfmiddlewaretoken']").val(),
             method: "make_coffee",
@@ -30,9 +24,11 @@ $( document ).ready(function() {
             csrfmiddlewaretoken: $("[name='csrfmiddlewaretoken']").val(),
             method: option,
         }, function( data ) {
-            $("#problems").html("");
+             $("#problems").html("");
              $("#coffee_maker").attr("disabled", false);
-             $(option).attr("disabled", true);
+             $("[id*='options']").each(function(){
+                $(this).attr("disabled", true);
+             })
         });
     };
 
