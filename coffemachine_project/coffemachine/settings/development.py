@@ -7,6 +7,12 @@ from .common import *
 # uncomment the following line to include i18n
 # from .i18n import *
 
+# finally grab the SECRET KEY
+from django.utils.crypto import get_random_string
+
+chars = 'abcdefghijklmnopqrstuvwxyz0123456789!$%&()=+-_'
+SECRET_KEY = get_random_string(50, chars)
+
 
 # ##### DEBUG CONFIGURATION ###############################
 DEBUG = True

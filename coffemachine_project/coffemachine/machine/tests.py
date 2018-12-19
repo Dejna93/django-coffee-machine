@@ -3,12 +3,10 @@ from collections import defaultdict
 
 from django.test import TestCase, Client
 
-from coffemachine.machine.handler import PressurePump, WaterHeater, MilkHeater, WaterTank, MilkTank, TrashBin, CoffeeGrinder
+from coffemachine.machine.container import WaterTank, MilkTank
+from coffemachine.machine.devices import PressurePump, WaterHeater, MilkHeater, TrashBin, CoffeeGrinder
+from coffemachine.machine.handler import CoffeeBrewMechanism, AmericanoRecipe, LatteRecipe, EspressoRecipe
 from coffemachine.machine.models import Coffee
-
-from coffemachine.machine.handler import CoffeeBrewMechanism, EspressoRecipe
-
-from coffemachine.machine.handler import LatteRecipe, AmericanoRecipe
 
 
 class MachineTestCases(TestCase):
@@ -20,9 +18,6 @@ class MachineTestCases(TestCase):
 
 
 class PressurePump_Test(MachineTestCases):
-    def initials(self):
-        return PressurePump()
-
     def test_initial_device(self):
         pressurepomp = PressurePump()
         self.assertTrue(pressurepomp.run_process())
@@ -36,17 +31,19 @@ class PressurePump_Test(MachineTestCases):
 
 
 class WaterHeater_Test(MachineTestCases):
+
+    def boil_some_water(self, water_to_boil):
+        heater = WaterHeater()
+        heater.run_process(water_to_boil=water_to_boil)
+        self.assertFalse(heater.get_device_errors())
+
     def test_boil_0_water(self):
         heater = WaterHeater()
-        self.assertFalse(heater.run_process(water_to_boil=0))
-
-    def test_boil_min_capacity(self):
-        heater = WaterHeater()
-        self.assertTrue(heater.run_process(water_to_boil=WaterHeater.MIN_CAPACITY))
+        heater.run_process(water_to_boil=0)
+        self.assertTrue(heater.get_device_errors()[WaterHeater.ERROR_NOT_ENOUGH_WATER_TO_BOIL])
 
     def test_boil_normal_capacity(self):
-        heater = WaterHeater()
-        self.assertTrue(heater.run_process(water_to_boil=WaterHeater.CAPACITY / 2))
+        self.boil_some_water(WaterHeater.CAPACITY / 2)
 
     def test_boil_overflow_capacity(self):
         heater = WaterHeater()
@@ -56,19 +53,19 @@ class WaterHeater_Test(MachineTestCases):
         heater = WaterHeater()
         status = []
         for time in range(WaterTank.CAPACITY // WaterHeater.CAPACITY):
-            status.append(heater.run_process(water_to_boil=WaterHeater.CAPACITY))
-        self.assertTrue(status[0])
+            heater.run_process(water_to_boil=WaterHeater.CAPACITY)
+            status.append(heater.get_device_errors())
+        self.assertFalse(status[0])
         self.assertTrue(status[-1][WaterHeater.ERROR_EMPTY_WATER_TANK])
 
     def test_boil_couple_times_with_refill(self):
         heater = WaterHeater()
-        status = None
         for _ in range(WaterTank.CAPACITY // WaterHeater.CAPACITY):
-            status = heater.run_process(water_to_boil=WaterHeater.CAPACITY)
-        self.assertTrue(status[WaterHeater.ERROR_EMPTY_WATER_TANK])
-        heater.water_tank.fill_fluid_tank(WaterTank.CAPACITY)
+            heater.run_process(water_to_boil=WaterHeater.CAPACITY)
+        self.assertTrue(heater.get_device_errors()[WaterHeater.ERROR_EMPTY_WATER_TANK])
+        heater.water_tank.fill_tank(WaterTank.CAPACITY)
         status = heater.run_process(water_to_boil=WaterHeater.CAPACITY)
-        self.assertTrue(status)
+        self.assertFalse(status)
 
 
 class MilkHeater_Test(MachineTestCases):
@@ -98,19 +95,22 @@ class TrashBin_Test(MachineTestCases):
     def test_init_trash(self):
         trash = TrashBin()
         trash.run_process()
-        self.assertEqual(trash.current_weight, 1)
+        self.assertEqual(trash.current_level, 1)
 
     def test_throw_away_trash(self):
         trash = TrashBin()
         trash.run_process()
         trash.cleanup()
-        self.assertEqual(trash.current_weight, 0)
+        self.assertEqual(trash.current_level, 0)
 
 
 class CoffeeGrinder_Test(MachineTestCases):
-    def test_grind_normal_amount_coffee(self):
+    def grind_amount_of_coffee(self, coffee):
         grinder = CoffeeGrinder()
-        self.assertTrue(grinder.grind_beans(amount=CoffeeGrinder.CAPACITY / 2))
+        self.assertTrue(grinder.grind_beans(amount=coffee))
+
+    def test_grind_normal_amount_coffee(self):
+        self.grind_amount_of_coffee(CoffeeGrinder.CAPACITY / 2)
 
     def test_grind_0_amount_coffee(self):
         grinder = CoffeeGrinder()
@@ -137,13 +137,13 @@ class WaterTank_Test(MachineTestCases):
     def test_fill_liquid_tank__minus_capacity(self):
         tank = WaterTank()
         with self.assertRaisesMessage(ValueError, "It is possible to have minus something in bottle?"):
-            tank.fill_fluid_tank(-100)
+            tank.fill_tank(-100)
 
     def test_fill_liquid_tank__0_capacity(self):
         tank = WaterTank()
         capacity = tank.content_level
         self.assertEqual(capacity, WaterTank.CAPACITY)
-        tank.fill_fluid_tank(0)
+        tank.fill_tank(0)
         self.assertEqual(capacity, WaterTank.CAPACITY)
 
     def test_fill_liquid_tank__normal_capacity(self):
@@ -152,12 +152,12 @@ class WaterTank_Test(MachineTestCases):
         additional_value = WaterTank.CAPACITY // 4
         tank.content_level = initial_value  # simiul proces of gettting fluid
         self.assertEqual(tank.content_level, initial_value)
-        tank.fill_fluid_tank(additional_value)
+        tank.fill_tank(additional_value)
         self.assertEqual(tank.content_level, initial_value + additional_value)
 
     def test_fill_liquid_tank__above_capacity(self):
         tank = WaterTank()
-        self.assertFalse(tank.fill_fluid_tank(100)[0])
+        self.assertFalse(tank.fill_tank(100)[0])
         self.assertEqual(tank.content_level, WaterTank.CAPACITY)
 
 

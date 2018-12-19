@@ -16,4 +16,3 @@ class Coffee(models.Model):
 
     def __str__(self):
         return "%s, %s" % (self.coffee_type, self.size)
-
