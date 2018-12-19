@@ -5,9 +5,9 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.views import View
 
-from .handler import CoffeeBrewMechanism
-from .forms import CoffeeChoiceForm
-from .models import Coffee
+from coffemachine.machine.handler import CoffeeBrewMechanism
+from coffemachine.machine.forms import CoffeeChoiceForm
+from coffemachine.machine.models import Coffee
 
 mechanism = CoffeeBrewMechanism()
 

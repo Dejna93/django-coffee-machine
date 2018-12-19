@@ -1,4 +1,4 @@
-from .devices import WaterHeater, MilkHeater, CoffeeGrinder, PressurePump, TrashBin
+from coffemachine.machine.devices import WaterHeater, MilkHeater, CoffeeGrinder, PressurePump, TrashBin
 
 try:
     import thread

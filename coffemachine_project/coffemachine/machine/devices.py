@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
-from .container import MilkTank, CoffeeBeansTank, WaterTank
+from coffemachine.machine.container import MilkTank, CoffeeBeansTank, WaterTank
 
 
 class DevicePart(object):
