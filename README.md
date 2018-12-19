@@ -67,8 +67,10 @@ coverage html
 
 ## Deployment
 
-In progress
-
+Run development server
+```bash
+python manage.py runserver localhost:8080
+```
 ## Built With
 
 * [Django](https://docs.djangoproject.com/en/1.11/) - The web framework used
